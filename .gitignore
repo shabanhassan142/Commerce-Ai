@@ -1,0 +1,55 @@
+# ============================================================
+# CommerceFlow AI — Root .gitignore
+# ============================================================
+
+# ── Python / Backend ────────────────────────────────────────
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+backend/.pytest_cache/
+backend/**/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+backend/dist/
+backend/build/
+
+# Secrets — NEVER commit these
+backend/.env
+backend/.env.local
+backend/.env.production
+
+# Runtime artifacts
+backend/logs/
+backend/uploads/
+
+# FAISS vector index (large binary, rebuilt on deploy)
+backend/faiss/
+
+# ── Frontend ────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+frontend/.env.test.local
+
+# ── OS / Editor ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Docker (optional, keep Dockerfiles but not generated files) ─
+.dockerignore
