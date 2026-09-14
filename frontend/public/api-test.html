@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CommerceFlow API Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #eee; }
+    button { background: #6366f1; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 6px; font-size: 14px; margin: 5px; }
+    button:hover { background: #4f52c9; }
+    pre { background: #0f0f1a; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+    .ok { color: #4ade80; }
+    .err { color: #f87171; }
+    h2 { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <h2>CommerceFlow AI — API Connection Test</h2>
+  <p>This page tests the login API directly. Open DevTools (F12) → Console tab too.</p>
+
+  <button onclick="testLogin('admin@commerceflow.ai', 'Admin123!')">Login as Admin</button>
+  <button onclick="testLogin('customer1@example.com', 'Customer123!')">Login as Customer</button>
+  <button onclick="testLogin('support@commerceflow.ai', 'Support123!')">Login as Support</button>
+  <button onclick="testRegister()">Register Test User</button>
+  <button onclick="testHealth()">Health Check</button>
+
+  <pre id="output">Click a button to test...</pre>
+
+  <script>
+    // Use relative path so fetch goes through Vite proxy: http://localhost:5174/api/v1/... -> http://127.0.0.1:8000/api/v1/...
+    const BASE = '';
+
+    function log(msg, isError = false) {
+      const el = document.getElementById('output');
+      el.className = isError ? 'err' : 'ok';
+      el.textContent = msg;
+      console.log(msg);
+    }
+
+    async function testHealth() {
+      log('Testing backend health...');
+      try {
+        const r = await fetch(`${BASE}/api/v1/auth/me`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        log(`Health check response: ${r.status} ${r.statusText}\nBackend is reachable!`);
+      } catch (e) {
+        log(`ERROR: Cannot reach backend at ${BASE}\n\n${e.message}\n\nMake sure backend is running on port 8000.`, true);
+      }
+    }
+
+    async function testLogin(email, password) {
+      log(`Testing login for: ${email}...`);
+      try {
+        const r = await fetch(`${BASE}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await r.json();
+        if (r.ok && data.success) {
+          log(`✓ LOGIN SUCCESS!\n\nEmail: ${data.data.user.email}\nRole: ${data.data.user.role}\nToken: ${data.data.tokens.access_token.substring(0, 40)}...`);
+        } else {
+          log(`✗ LOGIN FAILED\n\nStatus: ${r.status}\nResponse: ${JSON.stringify(data, null, 2)}`, true);
+        }
+      } catch (e) {
+        log(`✗ NETWORK ERROR — Cannot reach backend!\n\n${e.message}\n\nThis is a CORS or connectivity issue.`, true);
+      }
+    }
+
+    async function testRegister() {
+      const email = `test_${Date.now()}@example.com`;
+      log(`Testing registration for: ${email}...`);
+      try {
+        const r = await fetch(`${BASE}/api/v1/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: 'Test User',
+            email: email,
+            password: 'Test123!',
+            role: 'customer'
+          })
+        });
+        const data = await r.json();
+        if (data.success) {
+          log(`✓ REGISTRATION SUCCESS!\n\nEmail: ${data.data.user.email}\nRole: ${data.data.user.role}`);
+        } else {
+          log(`✗ REGISTRATION FAILED\n\n${JSON.stringify(data, null, 2)}`, true);
+        }
+      } catch (e) {
+        log(`✗ NETWORK ERROR — Cannot reach backend!\n\n${e.message}`, true);
+      }
+    }
+
+    // Auto-test on load
+    window.onload = testHealth;
+  </script>
+</body>
+</html>
