@@ -42,10 +42,7 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
-        # Railway and most PaaS providers supply DATABASE_URL as:
-        #   postgres://...  or  postgresql://...
-        # asyncpg requires the +asyncpg dialect driver suffix.
-        # We auto-convert so deployments work without manual editing.
+        v = v.strip() if v else ""
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+asyncpg://", 1)
         elif v.startswith("postgresql://"):
