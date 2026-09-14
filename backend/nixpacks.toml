@@ -1,0 +1,17 @@
+# Railway Nixpacks build configuration for CommerceFlow AI FastAPI backend
+# See: https://nixpacks.com/docs/configuration/file
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
+
+[phases.install]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
