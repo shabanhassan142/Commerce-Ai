@@ -34,6 +34,7 @@ structlog==24.4.0
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dateutil==2.9.0
 orjson==3.10.12
+faker==33.1.0
 
 # ── AI / LangGraph (installed now, used in Module 3+) ────────────────────────
 langchain==0.3.13
