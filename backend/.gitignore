@@ -1,0 +1,38 @@
+# =============================================================================
+# CommerceFlow AI — Backend .gitignore
+# =============================================================================
+
+# Python
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Secrets — NEVER commit
+.env
+.env.local
+.env.production
+
+# Runtime artifacts
+logs/
+uploads/
+
+# FAISS binary index (too large, rebuilt on deploy)
+faiss/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
