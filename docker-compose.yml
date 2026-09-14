@@ -1,0 +1,126 @@
+# =============================================================================
+# CommerceFlow AI — Docker Compose (Full Stack)
+# =============================================================================
+#
+# Services:
+#   postgres   — PostgreSQL 15 (same port 5433 as local dev — no conflicts)
+#   backend    — FastAPI on port 8000
+#   frontend   — React/Vite served by nginx on port 3000
+#
+# FAISS Index (IMPORTANT):
+#   The pre-built FAISS index at ./backend/faiss/ is mounted read-only.
+#   The container NEVER re-embeds or regenerates the index at startup.
+#   If the volume is not present, RAG will be unavailable (graceful degradation).
+#   To rebuild the index, run the build_index script locally, then restart.
+#
+# Database:
+#   Uses the EXISTING project database on port 5433 (external) → 5432 (internal).
+#   Credentials default to commerceflow / commerceflow_secret / commerceflow_db.
+#   This matches the existing local dev DATABASE_URL in backend/.env.
+#
+# Usage:
+#   docker compose up              # Start all services
+#   docker compose up postgres     # Start only database
+#   docker compose --profile admin up  # Also start pgAdmin
+#
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  # Port 5433:5432 matches the existing local dev configuration.
+  # No port conflict with local PostgreSQL (which typically uses 5432).
+  postgres:
+    image: postgres:15-alpine
+    container_name: commerceflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-commerceflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-commerceflow_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-commerceflow_db}
+    ports:
+      - "5433:5432"    # Keep same port as local dev — DATABASE_URL unchanged
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-commerceflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (FastAPI) ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: commerceflow_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env    # Loads DATABASE_URL, SECRET_KEY, OPENROUTER_API_KEY etc.
+    environment:
+      # Override DATABASE_URL to use the Docker service name instead of localhost
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-commerceflow}:${POSTGRES_PASSWORD:-commerceflow_secret}@postgres:5432/${POSTGRES_DB:-commerceflow_db}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount pre-built FAISS index as READ-ONLY.
+      # The container will NOT generate or modify this index.
+      # If this volume is missing, RAG degrades gracefully.
+      - ./backend/faiss:/app/faiss:ro
+      # Writable log directory
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ── Frontend (React/Vite via nginx) ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Leave empty to use nginx proxy (backend container handles /api/)
+        VITE_API_URL: ""
+    container_name: commerceflow_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ── pgAdmin (optional — run with: docker compose --profile admin up) ─────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: commerceflow_pgadmin
+    restart: unless-stopped
+    profiles:
+      - admin    # Only starts when: docker compose --profile admin up
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@commerceflow.ai}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  backend_logs:
